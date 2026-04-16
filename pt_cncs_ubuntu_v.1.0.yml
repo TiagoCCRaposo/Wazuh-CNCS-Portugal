@@ -1,0 +1,538 @@
+#################################################################################
+#                                                                               #
+#   ____   _____     _______ ____  _____ ___ ____ _   _                         #
+#  / ___| / _ \ \   / / ____|  _ \| ____|_ _/ ___| \ | |                        #
+#  \___ \| | | \ \ / /|  _| | |_) |  _|  | | |  _|  \| |                        #
+#   ___) | |_| |\ V / | |___|  _ <| |___ | | |_| | |\  |                        #
+#  |____/ \___/  \_/  |_____|_| \_\_____|___\____|_| \_|                        #
+#                                                                               #
+#   ____  _   _ ___ _____ _     ____                                            #
+#  / ___|| | | |_ _| ____| |   |  _ \                                           #
+#  \___ \| |_| || ||  _| | |   | | | |                                          #
+#   ___) |  _  || || |___| |___| |_| |                                          #
+#  |____/|_| |_|___|_____|_____|____/                                           #
+#                                                                               #
+# ---[ SOVEREIGN SHIELD | SOVEREIGN GOLD ENGINE ]---                            #
+#                                                                               #
+#  POLICY NAME: Sovereign Gold Ubuntu 22.04 Compliance                          #
+#  FRAMEWORK:   Portuguese QNRCS (CNCS 50 Controls) + NIS2                      #
+#  VERSION:     v1.0. (EN-US)                                                   #
+#  AUTHOR:      Tiago Raposo (https://github.com/TiagoCCRaposo)                 #
+#  LICENSE:     MIT                                                             #
+#                                                                               #
+#################################################################################
+
+policy:
+  id: "pt_cncs_ubuntu22_gold"
+  file: "pt_cncs_ubuntu22_gold.yml"
+  name: "Sovereign Gold: Portugal National Compliance (CNCS 50 + NIS2)"
+  description: "Comprehensive hardening baseline mapped to the Portuguese National Cybersecurity Reference Framework (QNRCS), GDPR, and NIS2 Directive Art. 21."
+  references:
+    - https://www.cncs.gov.pt/
+    - https://github.com/TiagoCCRaposo/wazuh-sovereign-shield
+
+checks:
+# =================================================================
+# DOMAIN 1: IDENTITY & ACCESS MANAGEMENT (IAM)
+# =================================================================
+
+  - id: 20001
+    title: "[PT-CNCS-20001] Prohibit Direct Root Login via SSH"
+    description: "Ensures the root user cannot log in directly, enforcing administrative accountability."
+    rationale: "Direct root login increases the risk of brute-force attacks and hides which individual admin performed an action."
+    remediation: "Edit /etc/ssh/sshd_config, set 'PermitRootLogin no', and restart the SSH service."
+    condition: all
+    rules:
+      - 'f:/etc/ssh/sshd_config -> !r:^PermitRootLogin\s+yes'
+
+  - id: 20002
+    title: "[PT-CNCS-20002] GDPR - Password History (PAM)"
+    description: "Enforces password reuse limits to prevent credential recycling."
+    rationale: "Restricting password reuse forces users to create new, unique passwords, mitigating the impact of leaked credentials."
+    remediation: "Add 'remember=5' to the pam_unix.so line in /etc/pam.d/common-password."
+    condition: all
+    rules:
+      - 'f:/etc/pam.d/common-password -> r:pam_unix.so'
+      - 'f:/etc/pam.d/common-password -> r:remember'
+
+  - id: 20003
+    title: "[PT-CNCS-20003] Maximum Password Age (90 Days)"
+    description: "Ensures periodic credential rotation in compliance with cyber hygiene standards."
+    rationale: "Limiting the lifetime of a password reduces the window of opportunity for an attacker to use a compromised credential."
+    remediation: "Set 'PASS_MAX_DAYS 90' in /etc/login.defs."
+    condition: all
+    rules:
+      - 'f:/etc/login.defs -> r:^PASS_MAX_DAYS\s+90'
+
+  - id: 20025
+    title: "[PT-CNCS-20025] Global Session Timeout (TMOUT)"
+    description: "Ensures that inactive shell sessions are automatically terminated."
+    rationale: "Idle sessions are vulnerable to unauthorized access if a terminal is left unattended."
+    remediation: "Set 'TMOUT=600' in /etc/profile or /etc/environment."
+    condition: all
+    rules:
+      - 'f:/etc/profile -> r:TMOUT=\d+'
+
+  - id: 20026
+    title: "[PT-CNCS-20026] Account Lockout after Login Failures"
+    description: "Enforces a lockout policy to mitigate automated brute-force attacks."
+    rationale: "Locking accounts after multiple failures prevents persistent automated guessing of passwords."
+    remediation: "Configure pam_faillock.so in /etc/pam.d/common-auth."
+    condition: any
+    rules:
+      - 'f:/etc/pam.d/common-auth -> r:pam_faillock.so'
+      - 'f:/etc/pam.d/common-auth -> r:pam_tally2.so'
+
+  - id: 20019
+    title: "[PT-CNCS-20019] Prohibit Accounts with Empty Passwords"
+    description: "Checks for accounts that do not require authentication."
+    rationale: "An account without a password provides an easy entry point for attackers."
+    remediation: "Run 'passwd -l [username]' for any account found with an empty password."
+    condition: all
+    rules:
+      - 'c:awk -F: "($2 == \"\") { print $1 }" /etc/shadow -> !r:.'
+
+  - id: 20027
+    title: "[PT-CNCS-20027] Restrict Access to the 'su' Command"
+    description: "Ensures only authorized users can switch to the root user."
+    rationale: "Restricting 'su' to a specific group (e.g., wheel) adds an extra layer of access control."
+    remediation: "Add 'auth required pam_wheel.so' to /etc/pam.d/su."
+    condition: all
+    rules:
+      - 'f:/etc/pam.d/su -> r:pam_wheel.so'
+
+# =================================================================
+# DOMAIN 2: NETWORK STACK HARDENING (SYSCTL)
+# =================================================================
+
+  - id: 20004
+    title: "[PT-CNCS-20004] Host-Based Firewall Status (UFW)"
+    description: "Ensures the local firewall is active to filter unauthorized traffic."
+    rationale: "A host-based firewall provides defense-in-depth even if network firewalls are bypassed."
+    remediation: "Run 'ufw enable' to activate the Uncomplicated Firewall."
+    condition: all
+    rules:
+      - 'c:ufw status -> r:Status: active'
+
+  - id: 20008
+    title: "[PT-CNCS-20008] Disable IP Forwarding"
+    description: "Prevents the system from acting as a router."
+    rationale: "Disabling forwarding ensures the system cannot be used to bridge traffic between isolated networks."
+    remediation: "Set 'net.ipv4.ip_forward = 0' in /etc/sysctl.conf."
+    condition: all
+    rules:
+      - 'f:/etc/sysctl.conf -> r:net.ipv4.ip_forward\s*=\s*0'
+
+  - id: 20010
+    title: "[PT-CNCS-20010] Anti-DoS: Disable ICMP Broadcast"
+    description: "Prevents responding to broadcast ICMP requests."
+    rationale: "Ignoring these requests protects the system from Smurf-style Denial of Service attacks."
+    remediation: "Set 'net.ipv4.icmp_echo_ignore_broadcasts = 1' in sysctl."
+    condition: all
+    rules:
+      - 'c:sysctl net.ipv4.icmp_echo_ignore_broadcasts -> r:1'
+
+  - id: 20011
+    title: "[PT-CNCS-20011] Ignore Bogus ICMP Errors"
+    description: "Protects against logging flooding from invalid ICMP packets."
+    rationale: "Ignoring bogus errors prevents attackers from filling up system logs with junk data."
+    remediation: "Set 'net.ipv4.icmp_ignore_bogus_error_responses = 1' in sysctl."
+    condition: all
+    rules:
+      - 'c:sysctl net.ipv4.icmp_ignore_bogus_error_responses -> r:1'
+
+  - id: 20030
+    title: "[PT-CNCS-20030] Disable IPv6 Stack"
+    description: "Reduces attack surface by disabling IPv6."
+    rationale: "Many environments do not use IPv6, and leaving the stack enabled provides an unmonitored attack vector."
+    remediation: "Set 'net.ipv6.conf.all.disable_ipv6 = 1' in /etc/sysctl.conf."
+    condition: all
+    rules:
+      - 'c:sysctl net.ipv6.conf.all.disable_ipv6 -> r:1'
+
+  - id: 20031
+    title: "[PT-CNCS-20031] TCP SYN Cookies Enabled"
+    description: "Protects against SYN Flood DoS attacks."
+    rationale: "SYN Cookies allow the system to handle high volumes of connection requests during an attack."
+    remediation: "Set 'net.ipv4.tcp_syncookies = 1' in /etc/sysctl.conf."
+    condition: all
+    rules:
+      - 'c:sysctl net.ipv4.tcp_syncookies -> r:1'
+
+  - id: 20032
+    title: "[PT-CNCS-20032] Ignore ICMP Redirects"
+    description: "Prevents unauthorized routing table modifications."
+    rationale: "ICMP redirects can be used by attackers to perform Man-in-the-Middle attacks."
+    remediation: "Set 'net.ipv4.conf.all.accept_redirects = 0' in sysctl."
+    condition: all
+    rules:
+      - 'c:sysctl net.ipv4.conf.all.accept_redirects -> r:0'
+
+  - id: 20033
+    title: "[PT-CNCS-20033] Disable Source Routed Packets"
+    description: "Ensures packets follow standard routing paths."
+    rationale: "Source routing allows an attacker to dictate the path of a packet, potentially bypassing firewalls."
+    remediation: "Set 'net.ipv4.conf.all.accept_source_route = 0' in sysctl."
+    condition: all
+    rules:
+      - 'c:sysctl net.ipv4.conf.all.accept_source_route -> r:0'
+
+  - id: 20034
+    title: "[PT-CNCS-20034] Log Martian Packets"
+    description: "Logs packets with impossible source addresses."
+    rationale: "Logging martian packets provides early warning of IP spoofing attempts."
+    remediation: "Set 'net.ipv4.conf.all.log_martians = 1' in sysctl."
+    condition: all
+    rules:
+      - 'c:sysctl net.ipv4.conf.all.log_martians -> r:1'
+
+# =================================================================
+# DOMAIN 3: KERNEL HARDENING
+# =================================================================
+
+  - id: 20009
+    title: "[PT-CNCS-20009] Enable ASLR Protection"
+    description: "Enforces full Address Space Layout Randomization (ASLR)."
+    rationale: "ASLR protects against memory corruption attacks by randomizing key data areas."
+    remediation: "Set 'kernel.randomize_va_space = 2' in /etc/sysctl.conf."
+    condition: all
+    rules:
+      - 'c:sysctl kernel.randomize_va_space -> r:2'
+
+  - id: 20012
+    title: "[PT-CNCS-20012] Restrict Access to Kernel Logs (dmesg)"
+    description: "Prevents unprivileged users from viewing kernel debug messages."
+    rationale: "Kernel logs can leak information about the system's memory and hardware configuration."
+    remediation: "Set 'kernel.dmesg_restrict = 1' in sysctl."
+    condition: all
+    rules:
+      - 'c:sysctl kernel.dmesg_restrict -> r:1'
+
+  - id: 20021
+    title: "[PT-CNCS-20021] Disable CORE Dumps"
+    description: "Ensures sensitive memory data is not written to disk during crashes."
+    rationale: "Core dumps can contain passwords and other secrets present in memory."
+    remediation: "Set 'fs.suid_dumpable = 0' in sysctl."
+    condition: all
+    rules:
+      - 'c:sysctl fs.suid_dumpable -> r:0'
+
+  - id: 20035
+    title: "[PT-CNCS-20035] Restrict Kernel Pointers (%p)"
+    description: "Hides kernel addresses from unprivileged users."
+    rationale: "Exposing kernel pointers helps attackers calculate offsets for kernel exploits."
+    remediation: "Set 'kernel.kptr_restrict = 1' in sysctl."
+    condition: all
+    rules:
+      - 'c:sysctl kernel.kptr_restrict -> r:1'
+
+  - id: 20036
+    title: "[PT-CNCS-20036] Disable kexec (Runtime Protection)"
+    description: "Prevents loading a new kernel without a system reboot."
+    rationale: "Disabling kexec prevents attackers from replacing the running kernel with a malicious version."
+    remediation: "Set 'kernel.kexec_load_disabled = 1' in sysctl."
+    condition: all
+    rules:
+      - 'c:sysctl kernel.kexec_load_disabled -> r:1'
+
+  - id: 20037
+    title: "[PT-CNCS-20037] BPF JIT Hardening"
+    description: "Hardens the JIT compiler against spraying attacks."
+    rationale: "BPF hardening mitigates a common class of modern kernel exploits."
+    remediation: "Set 'net.core.bpf_jit_harden = 2' in sysctl."
+    condition: all
+    rules:
+      - 'c:sysctl net.core.bpf_jit_harden -> r:2'
+
+# =================================================================
+# DOMAIN 4: INTEGRITY & PRIVILEGES (PoLP)
+# =================================================================
+
+  - id: 20015
+    title: "[PT-CNCS-20015] Audit Accounts with UID 0"
+    description: "Ensures only 'root' has full administrative privileges."
+    rationale: "Multiple accounts with UID 0 compromise accountability and security."
+    remediation: "Remove or reassign UID for any account other than root found with UID 0."
+    condition: all
+    rules:
+      - 'c:awk -F: "($3 == 0) { print $1 }" /etc/passwd -> r:^root$'
+
+  - id: 20005
+    title: "[PT-CNCS-20005] Password Hash File Presence (/etc/shadow)"
+    description: "Verifies the existence of the critical credential store."
+    rationale: "The shadow file is essential for local authentication security."
+    remediation: "Ensure /etc/shadow exists and is properly protected."
+    condition: all
+    rules:
+      - 'f:/etc/shadow'
+
+  - id: 20018
+    title: "[PT-CNCS-20018] Secure Permissions for Sudoers File"
+    description: "Ensures only authorized users can read privilege escalation settings."
+    rationale: "Incorrect permissions on sudoers allow users to gain unauthorized root access."
+    remediation: "Run 'chmod 440 /etc/sudoers'."
+    condition: all
+    rules:
+      - 'f:/etc/sudoers -> n:mode <= 0440'
+
+  - id: 20016
+    title: "[PT-CNCS-20016] Detect Unowned Files"
+    description: "Identifies files not belonging to a valid user or group."
+    rationale: "Unowned files may be a sign of unauthorized software installation or residual malware."
+    remediation: "Locate unowned files using 'find' and assign them to a valid user/group."
+    condition: all
+    rules:
+      - 'c:find /etc -nogroup -o -nouser -> !r:.'
+
+  - id: 20038
+    title: "[PT-CNCS-20038] Secure Permissions for /etc/shadow"
+    description: "Restricts shadow file access to prevent hash exfiltration."
+    rationale: "Access to /etc/shadow allows attackers to perform offline password cracking."
+    remediation: "Run 'chmod 640 /etc/shadow'."
+    condition: all
+    rules:
+      - 'f:/etc/shadow -> n:mode <= 0640'
+
+  - id: 20039
+    title: "[PT-CNCS-20039] Secure Permissions for /etc/passwd"
+    description: "Ensures the password file is not world-writable."
+    rationale: "A writable passwd file allows any user to create new administrative accounts."
+    remediation: "Run 'chmod 644 /etc/passwd'."
+    condition: all
+    rules:
+      - 'f:/etc/passwd -> n:mode <= 0644'
+
+  - id: 20040
+    title: "[PT-CNCS-20040] Detect World-Writable Files"
+    description: "Flags files that can be modified by any user."
+    rationale: "World-writable files in system directories are a severe security risk."
+    remediation: "Review world-writable files and restrict permissions (chmod o-w)."
+    condition: all
+    rules:
+      - 'c:find /etc -perm -2 ! -type l -> !r:.'
+
+  - id: 20051
+    title: "[PT-CNCS-20051] Sticky Bit on Public Writable Directories"
+    description: "Ensures users can only delete their own files in public folders."
+    rationale: "Without the sticky bit, any user can delete or rename other users' files in /tmp."
+    remediation: "Run 'chmod +t' on any world-writable directory lacking the sticky bit."
+    condition: all
+    rules:
+      - 'c:find / -xdev -type d \( -perm -0002 -a ! -perm -1000 \) -> !r:.'
+
+# =================================================================
+# DOMAIN 5: SOFTWARE & SUPPLY CHAIN SECURITY
+# =================================================================
+
+  - id: 20007
+    title: "[PT-CNCS-20007] Remove Obsolete Protocols (Telnet/RSH)"
+    description: "Ensures unencrypted remote shell services are not present."
+    rationale: "Telnet and RSH send data in cleartext, including credentials."
+    remediation: "Uninstall telnetd and rsh-server."
+    condition: none
+    rules:
+      - 'p:telnetd'
+      - 'p:rshd'
+
+  - id: 20041
+    title: "[PT-CNCS-20041] Remove NIS Services"
+    description: "Ensures outdated network information services are disabled."
+    rationale: "NIS is an insecure protocol that lacks modern authentication and encryption."
+    remediation: "Uninstall the 'nis' package."
+    condition: none
+    rules:
+      - 'p:nis'
+      - 'ypbind'
+
+  - id: 20042
+    title: "[PT-CNCS-20042] Compiler Restriction (GCC Audit)"
+    description: "Restricts GCC compiler access to root only."
+    rationale: "Attackers use compilers to build custom exploits and backdoors on the fly."
+    remediation: "Run 'chmod 700 /usr/bin/gcc'."
+    condition: all
+    rules:
+      - 'f:/usr/bin/gcc -> n:mode <= 0700'
+
+  - id: 20043
+    title: "[PT-CNCS-20043] Compiler Restriction (G++ Audit)"
+    description: "Restricts G++ compiler access to prevent malware compilation."
+    rationale: "C++ compilers facilitate the deployment of complex malicious software."
+    remediation: "Run 'chmod 700 /usr/bin/g++'."
+    condition: all
+    rules:
+      - 'f:/usr/bin/g++ -> n:mode <= 0700'
+
+  - id: 20044
+    title: "[PT-CNCS-20044] Post-Exploitation Tools Audit (Netcat)"
+    description: "Identifies tools often used for backdoors."
+    rationale: "Netcat is a powerful tool frequently abused by attackers for data exfiltration."
+    remediation: "Review the necessity of netcat and remove if not required for business."
+    condition: any
+    rules:
+      - 'f:/usr/bin/nc'
+      - 'f:/usr/bin/nc.openbsd'
+
+  - id: 20013
+    title: "[PT-CNCS-20013] Block USB Storage (Physical Security)"
+    description: "Disables the USB storage driver."
+    rationale: "Preventing USB storage blocks a major physical data theft vector."
+    remediation: "Blacklist the 'usb-storage' module in modprobe.d."
+    condition: all
+    rules:
+      - 'f:/etc/modprobe.d/usb-storage.conf -> r:install usb-storage /bin/true'
+
+  - id: 20045
+    title: "[PT-CNCS-20045] Block DCCP Protocol"
+    description: "Disables the DCCP protocol to reduce attack surface."
+    rationale: "Rarely used protocols often contain unpatched vulnerabilities in the kernel."
+    remediation: "Blacklist the 'dccp' module."
+    condition: all
+    rules:
+      - 'f:/etc/modprobe.d/dccp.conf -> r:install dccp /bin/true'
+
+  - id: 20046
+    title: "[PT-CNCS-20046] Block SCTP Protocol"
+    description: "Ensures SCTP is not loaded if not required."
+    rationale: "Like DCCP, SCTP can provide an unexpected network attack vector."
+    remediation: "Blacklist the 'sctp' module."
+    condition: all
+    rules:
+      - 'f:/etc/modprobe.d/sctp.conf -> r:install sctp /bin/true'
+
+# =================================================================
+# DOMAIN 6: LOGGING & AUDITING (FORENSICS)
+# =================================================================
+
+  - id: 20006
+    title: "[PT-CNCS-20006] Active Auditd Infrastructure"
+    description: "Ensures the Linux Audit framework is monitoring system events."
+    rationale: "Auditd provides the necessary logs for forensic investigation after an incident."
+    remediation: "Install and enable the 'auditd' service."
+    condition: all
+    rules:
+      - 'd:/etc/audit'
+
+  - id: 20014
+    title: "[PT-CNCS-20014] Rsyslog Service Active"
+    description: "Ensures the system log collector is running."
+    rationale: "Logs must be collected and forwarded to be useful for centralized monitoring."
+    remediation: "Run 'systemctl enable --now rsyslog'."
+    condition: all
+    rules:
+      - 'p:rsyslogd'
+
+  - id: 20047
+    title: "[PT-CNCS-20047] Integrity of Audit Rules"
+    description: "Ensures the monitoring configuration is present."
+    rationale: "Auditd requires rules to know which events to monitor (e.g., file changes)."
+    remediation: "Define rules in /etc/audit/rules.d/audit.rules."
+    condition: all
+    rules:
+      - 'f:/etc/audit/audit.rules'
+
+  - id: 20048
+    title: "[PT-CNCS-20048] Remote Logging (SIEM Integration)"
+    description: "Verifies that logs are forwarded to a central server."
+    rationale: "Local logs can be tampered with by attackers; remote logging preserves integrity."
+    remediation: "Configure a remote log host in /etc/rsyslog.conf."
+    condition: all
+    rules:
+      - 'f:/etc/rsyslog.conf -> r:@@'
+
+  - id: 20049
+    title: "[PT-CNCS-20049] Crontab Integrity"
+    description: "Ensures scheduled tasks are restricted to root."
+    rationale: "Malicious cron jobs are a common method for achieving persistence."
+    remediation: "Run 'chmod 600 /etc/crontab'."
+    condition: all
+    rules:
+      - 'f:/etc/crontab -> n:mode <= 0600'
+
+  - id: 20050
+    title: "[PT-CNCS-20050] Bootloader Permissions (GRUB Integrity)"
+    description: "Restricts boot configuration access."
+    rationale: "Protecting GRUB prevents attackers from entering single-user mode to reset passwords."
+    remediation: "Run 'chmod 400 /boot/grub/grub.cfg'."
+    condition: all
+    rules:
+      - 'f:/boot/grub/grub.cfg -> n:mode <= 0400'
+
+# =================================================================
+# DOMAIN 7: SECURE COMMUNICATIONS (SSH)
+# =================================================================
+
+  - id: 20020
+    title: "[PT-CNCS-20020] Standard SSH Port Audit (22)"
+    description: "Verifies SSH is running on the administrative port."
+    rationale: "Consistent port usage facilitates network monitoring and firewall rules."
+    remediation: "Set 'Port 22' in /etc/ssh/sshd_config."
+    condition: all
+    rules:
+      - 'f:/etc/ssh/sshd_config -> r:Port 22'
+
+  - id: 20052
+    title: "[PT-CNCS-20052] SSH Protocol 2 Enforcement"
+    description: "Disables the insecure SSH Protocol 1."
+    rationale: "Protocol 1 is vulnerable to multiple cryptographic attacks."
+    remediation: "Ensure 'Protocol 2' is set or Protocol 1 is not allowed in sshd_config."
+    condition: all
+    rules:
+      - 'f:/etc/ssh/sshd_config -> !r:Protocol\s+1'
+
+  - id: 20053
+    title: "[PT-CNCS-20053] SSH Max Auth Tries (Limit 4)"
+    description: "Prevents brute-force by limiting login attempts."
+    rationale: "Limiting tries forces attackers to reconnect, slowing down automated attacks."
+    remediation: "Set 'MaxAuthTries 4' in sshd_config."
+    condition: all
+    rules:
+      - 'f:/etc/ssh/sshd_config -> r:MaxAuthTries\s+4'
+
+  - id: 20054
+    title: "[PT-CNCS-20054] SSH Ignore Rhosts"
+    description: "Disables insecure rhosts authentication."
+    rationale: "Rhosts authentication relies on hostnames which can be spoofed."
+    remediation: "Set 'IgnoreRhosts yes' in sshd_config."
+    condition: all
+    rules:
+      - 'f:/etc/ssh/sshd_config -> r:IgnoreRhosts\s+yes'
+
+  - id: 20055
+    title: "[PT-CNCS-20055] SSH Hostbased Authentication Disabled"
+    description: "Ensures weak host-based auth is turned off."
+    rationale: "Host-based authentication is cryptographically weak compared to key-based auth."
+    remediation: "Set 'HostbasedAuthentication no' in sshd_config."
+    condition: all
+    rules:
+      - 'f:/etc/ssh/sshd_config -> r:HostbasedAuthentication\s+no'
+
+  - id: 20056
+    title: "[PT-CNCS-20056] SSH Empty Passwords Disabled"
+    description: "Ensures all logins require valid credentials."
+    rationale: "Preventing empty passwords is a fundamental access control requirement."
+    remediation: "Set 'PermitEmptyPasswords no' in sshd_config."
+    condition: all
+    rules:
+      - 'f:/etc/ssh/sshd_config -> r:PermitEmptyPasswords\s+no'
+
+
+#################################################################################
+#                                                                               #
+#   _________________________________________________________________________   #
+#  /                                                                         \  #
+# |    _________________________________________________________________      | #
+# |   |                                                                 |     | #
+# |   | S  O  V  E  R  E  I  G  N      G  O  L  D      E  N  G  I  N  E |     | #
+# |   |   ___________________________________________________________   |     | #
+# |   |  |                                                            | |     | #
+# |   |  |   PORTUGAL NATIONAL CYBERSECURITY COMPLIANCE FRAMEWORK     | |     | #
+# |   |  |            [ QNRCS / NIS2 / GDPR / ISO 27001 ]             | |     | #
+# |   |  |____________________________________________________________| |     | #
+# |   |_________________________________________________________________|     | #
+# |                                                                           | #
+#  \_________________________________________________________________________/  #
+#                                                                               #
+#          BUILD: Master v1.0-RELEASE | STATUS: HIGH ASSURANCE                  #
+#          TARGET: Ubuntu 22.04 LTS                                             #
+#                                                                               #
+#################################################################################
