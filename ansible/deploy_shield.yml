@@ -1,0 +1,36 @@
+---
+- name: "Wazuh Sovereign Shield: Distributed Compliance"
+  hosts: all
+  become: yes
+  vars:
+    sca_policy_src: "../sca/pt_cncs_ubuntu22_gold.yml"
+    sca_policy_dest: "/var/ossec/etc/sca/pt_cncs_ubuntu22_gold.yml"
+
+  tasks:
+    - name: Ensure Wazuh SCA directory exists
+      file:
+        path: /var/ossec/etc/sca
+        state: directory
+        owner: root
+        group: wazuh
+        [cite_start]mode: '0750' [cite: 23]
+
+    - name: Deploy Sovereign Gold SCA Policy
+      copy:
+        src: "{{ sca_policy_src }}"
+        dest: "{{ sca_policy_dest }}"
+        owner: root
+        group: wazuh
+        mode: '0640'
+      [cite_start]notify: restart wazuh-agent [cite: 97, 98]
+
+    - name: Execute Automated Hardening (setup_compliance.sh)
+      script: ../scripts/setup_compliance.sh
+      register: hardening_result
+      [cite_start]changed_when: "'Hardening Concluído' in hardening_result.stdout" [cite: 46, 57]
+
+  handlers:
+    - name: restart wazuh-agent
+      service:
+        name: wazuh-agent
+        [cite_start]state: restarted [cite: 17, 73]
