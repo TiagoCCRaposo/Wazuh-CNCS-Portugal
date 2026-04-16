@@ -473,7 +473,7 @@ git push origin feature/my-improvement
 ### Tiago Raposo
 *Cybersecurity & Compliance*
 
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://linkedin.com/in/tiago-raposo)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://linkedin.com/in/tiagocnraposo)
 [![GitHub](https://img.shields.io/badge/GitHub-TiagoCCRaposo-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/TiagoCCRaposo)
 
 <br/>
