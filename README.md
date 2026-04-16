@@ -405,10 +405,9 @@ After execution, all nodes in the inventory will report **100% Passed** to the W
 │  Compliance Score    :  100%  ████████████████████   │
 └──────────────────────────────────────────────────────┘
 ```
+<img width="940" height="429" alt="image" src="https://github.com/user-attachments/assets/8903cb64-d63f-4a6b-8320-efab81ecf171" />
 
 *Figure 1: Wazuh Dashboard — 0% failure rate across all audited controls.*
-
-*Figure 2: Full control list with SCA IDs, tags, file references, and pass/fail status.*
 
 ### On "Not Applicable" (N/A) Results
 
@@ -472,7 +471,7 @@ git push origin feature/my-improvement
 **Developed by**
 
 ### Tiago Raposo
-*Cybersecurity & Compliance Specialist*
+*Cybersecurity & Compliance*
 
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://linkedin.com/in/tiago-raposo)
 [![GitHub](https://img.shields.io/badge/GitHub-TiagoCCRaposo-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/TiagoCCRaposo)
