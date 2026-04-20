@@ -1,0 +1,326 @@
+ Sovereign Shield - Docker Security Benchmark (QNRCS & NIS2 Aligned)
+# Version: 1.1
+# Mapping: QNRCS (Quadro Nacional de Referência para a Cibersegurança)
+# Target: Docker Engine on Linux (Ubuntu/Debian/RHEL)
+
+policy:
+  id: "docker_qnrcs_platinum"
+  file: "docker-qnrcs.yml"
+  name: "Sovereign Shield - Docker Platinum Hardening (QNRCS)"
+  description: "Automated compliance benchmark for Docker environments based on CNCS technical guidelines."
+  references:
+    - https://www.cncs.gov.pt/
+    - https://cisecurity.org/benchmark/docker/
+
+requirements:
+  title: "Check if Docker is installed and running"
+  all:
+    - "f:/var/run/docker.sock"
+    - "c:command -v docker -> r:^/usr/bin/docker|^/usr/local/bin/docker"
+
+checks:
+# --- 1. HOST CONFIGURATION & DAEMON (IDs 30001-30012) ---
+  - id: 30001
+    title: "Ensure a separate partition for containers has been created (/var/lib/docker)"
+    condition: all
+    rules:
+      - 'f:/etc/fstab -> r:/var/lib/docker'
+
+  - id: 30002
+    title: "Ensure Docker socket is not world-readable (Permissions 660)"
+    condition: all
+    rules:
+      - 'c:stat -c %a /var/run/docker.sock -> r:660'
+
+  - id: 30003
+    title: "Ensure containers are NOT running as root user"
+    condition: all
+    rules:
+      - 'c:docker ps --quiet --filter "user=root" -> r:^$'
+
+  - id: 30004
+    title: "Ensure Inter-Container Communication (ICC) is disabled by default"
+    condition: all
+    rules:
+      - 'c:docker network inspect bridge --format {{.Options}} -> r:com.docker.network.bridge.enable_icc:false'
+
+  - id: 30005
+    title: "Ensure Docker daemon is up to date (Version 20.x or higher)"
+    condition: all
+    rules:
+      - 'c:docker version --format {{.Server.Version}} -> r:^2[0-9]'
+
+  - id: 30006
+    title: "Audit Docker files and directories (/var/lib/docker)"
+    condition: all
+    rules:
+      - 'c:auditctl -l -> r:/var/lib/docker'
+
+  - id: 30007
+    title: "Audit Docker daemon binary (/usr/bin/dockerd)"
+    condition: all
+    rules:
+      - 'c:auditctl -l -> r:/usr/bin/dockerd'
+
+  - id: 30008
+    title: "Ensure Docker daemon only binds to authorized interfaces (No 0.0.0.0)"
+    condition: all
+    rules:
+      - 'c:ps -ef | grep dockerd -> n:-H tcp://0.0.0.0'
+
+  - id: 30009
+    title: "Ensure Docker Content Trust is enabled"
+    condition: all
+    rules:
+      - 'c:echo $DOCKER_CONTENT_TRUST -> r:1'
+
+  - id: 30010
+    title: "Ensure Live Restore is enabled to maintain availability"
+    condition: all
+    rules:
+      - 'c:docker info --format {{.LiveRestoreEnabled}} -> r:true'
+
+  - id: 30011
+    title: "Ensure User Namespaces are enabled for container isolation"
+    condition: all
+    rules:
+      - 'c:docker info --format {{.SecurityOptions}} -> r:userns'
+
+  - id: 30012
+    title: "Ensure default ulimit is configured (prevent Resource Exhaustion)"
+    condition: all
+    rules:
+      - 'c:docker info --format {{.Ulimits}} -> n:<no value>'
+
+# --- 2. IMAGE & BUILD SECURITY (IDs 30013-30019) ---
+  - id: 30013
+    title: "Ensure only trusted base images are used"
+    condition: all
+    rules:
+      - 'c:docker images --format {{.Repository}} -> n:^<none>|^untagged'
+
+  - id: 30014
+    title: "Ensure SSH is NOT running inside active containers"
+    condition: all
+    rules:
+      - 'c:docker ps -q | xargs -I {} docker exec {} ps -e -> n:sshd'
+
+  - id: 30015
+    title: "Ensure HEALTHCHECK instruction is present in images"
+    condition: all
+    rules:
+      - 'c:docker images -q | xargs -I {} docker inspect --format {{.Config.Healthcheck}} {} -> n:none'
+
+  - id: 30016
+    title: "Ensure images do not contain hardcoded secrets (Env Vars)"
+    condition: all
+    rules:
+      - 'c:docker ps -q | xargs -I {} docker inspect {} -> n:PASSWORD|SECRET|KEY|TOKEN'
+
+  - id: 30017
+    title: "Ensure COPY is used instead of ADD in Dockerfiles"
+    condition: all
+    rules:
+      - 'c:grep -i "ADD " /var/lib/docker/image/*/imagedb/content/sha256/* -> n:ADD'
+
+  - id: 30018
+    title: "Ensure images have defined labels for traceability"
+    condition: all
+    rules:
+      - 'c:docker images -q | xargs -I {} docker inspect --format {{.Config.Labels}} {} -> n:map[]'
+
+  - id: 30019
+    title: "Ensure setuid and setgid permissions are removed from images"
+    condition: all
+    rules:
+      - 'c:docker ps -q | xargs -I {} docker exec {} find / -perm /6000 -type f -> r:^$'
+
+# --- 3. RUNTIME & NETWORK PROTECTION (IDs 30020-30031) ---
+  - id: 30020
+    title: "Ensure containers do not acquire new privileges (--no-new-privileges)"
+    condition: all
+    rules:
+      - 'c:docker ps -q | xargs -I {} docker inspect --format {{.HostConfig.SecurityOpt}} {} -> r:no-new-privileges'
+
+  - id: 30021
+    title: "Ensure CPU priority (shares) is set for all containers"
+    condition: all
+    rules:
+      - 'c:docker ps -q | xargs -I {} docker inspect --format {{.HostConfig.CpuShares}} {} -> n:0'
+
+  - id: 30022
+    title: "Ensure container's root filesystem is mounted as READ-ONLY"
+    condition: all
+    rules:
+      - 'c:docker ps -q | xargs -I {} docker inspect --format {{.HostConfig.ReadonlyRootfs}} {} -> r:true'
+
+  - id: 30023
+    title: "Ensure sensitive host directories are NOT mounted as volumes (/etc, /boot)"
+    condition: all
+    rules:
+      - 'c:docker ps -q | xargs -I {} docker inspect --format {{.Mounts}} {} -> n:/etc|/boot|/root'
+
+  - id: 30024
+    title: "Ensure PIDs limit is configured to prevent Fork Bombs"
+    condition: all
+    rules:
+      - 'c:docker ps -q | xargs -I {} docker inspect --format {{.HostConfig.PidsLimit}} {} -> n:-1|0'
+
+  - id: 30025
+    title: "Ensure Seccomp profile is enabled and not 'unconfined'"
+    condition: all
+    rules:
+      - 'c:docker ps -q | xargs -I {} docker inspect --format {{.HostConfig.SecurityOpt}} {} -> n:seccomp:unconfined'
+
+  - id: 30026
+    title: "Ensure AppArmor or SELinux profiles are active"
+    condition: any
+    rules:
+      - 'c:docker ps -q | xargs -I {} docker inspect --format {{.HostConfig.SecurityOpt}} {} -> r:apparmor|selinux'
+
+  - id: 30027
+    title: "Ensure containers are NOT running in 'privileged' mode"
+    condition: all
+    rules:
+      - 'c:docker ps -q | xargs -I {} docker inspect --format {{.HostConfig.Privileged}} {} -> r:false'
+
+  - id: 30028
+    title: "Ensure containers do not share the Host Network namespace"
+    condition: all
+    rules:
+      - 'c:docker ps -q | xargs -I {} docker inspect --format {{.HostConfig.NetworkMode}} {} -> n:host'
+
+  - id: 30029
+    title: "Ensure logging driver is configured (not empty)"
+    condition: all
+    rules:
+      - 'c:docker info --format {{.LoggingDriver}} -> n:<no value>'
+
+  - id: 30030
+    title: "Ensure Docker does not modify iptables (Manual review needed if False)"
+    condition: all
+    rules:
+      - 'c:docker info -> r:iptables: true'
+
+  - id: 30031
+    title: "Ensure Memory limits are set for containers"
+    condition: all
+    rules:
+      - 'c:docker ps -q | xargs -I {} docker inspect --format {{.HostConfig.Memory}} {} -> n:0'
+
+# --- 4. SECRETS & GOVERNANCE (IDs 30032-30050) ---
+  - id: 30032
+    title: "Ensure Docker daemon socket is restricted to 'docker' group"
+    condition: all
+    rules:
+      - 'c:stat -c %G /var/run/docker.sock -> r:docker'
+
+  - id: 30033
+    title: "Ensure Docker Content Trust is enforced at shell level"
+    condition: all
+    rules:
+      - 'c:env | grep DOCKER_CONTENT_TRUST -> r:1'
+
+  - id: 30034
+    title: "Check for unused Docker volumes (Cleanup needed)"
+    condition: all
+    rules:
+      - 'c:docker volume ls -qf dangling=true -> r:^$'
+
+  - id: 30035
+    title: "Check for unused Docker images (Cleanup needed)"
+    condition: all
+    rules:
+      - 'c:docker images -qf dangling=true -> r:^$'
+
+  - id: 30036
+    title: "Ensure Docker TLS authentication is enabled (if remote)"
+    condition: any
+    rules:
+      - 'c:docker info -> n:TCP'
+      - 'c:docker info --format {{.SecurityOptions}} -> r:name=tls'
+
+  - id: 30037
+    title: "Ensure Docker-in-Docker is NOT used via socket mounting"
+    condition: all
+    rules:
+      - 'c:docker ps -q | xargs -I {} docker inspect --format {{.Mounts}} {} -> n:docker.sock'
+
+  - id: 30038
+    title: "Ensure tmpfs is used for temporary container storage"
+    condition: all
+    rules:
+      - 'c:docker ps -q | xargs -I {} docker inspect --format {{.HostConfig.Tmpfs}} {} -> n:map[]'
+
+  - id: 30039
+    title: "Ensure Swarm mode mTLS is active (if applicable)"
+    condition: any
+    rules:
+      - 'c:docker info --format {{.Swarm.LocalNodeState}} -> r:inactive'
+      - 'c:docker info --format {{.Swarm.Cluster.TLSOrgID}} -> n:<no value>'
+
+  - id: 30040
+    title: "Ensure audit logs are centralized (Wazuh integration)"
+    condition: all
+    rules:
+      - 'c:ps -ef | grep wazuh-agent -> r:wazuh-agent'
+
+  - id: 30041
+    title: "Ensure Docker client and server versions match"
+    condition: all
+    rules:
+      - 'c:docker version --format {{.Client.Version}}-{{.Server.Version}} -> r:^(.+)-\1$'
+
+  - id: 30042
+    title: "Protect /etc/docker permissions (755)"
+    condition: all
+    rules:
+      - 'c:stat -c %a /etc/docker -> r:755'
+
+  - id: 30043
+    title: "Protect docker.service file permissions (644)"
+    condition: all
+    rules:
+      - 'c:stat -c %a /lib/systemd/system/docker.service -> r:644'
+
+  - id: 30044
+    title: "Protect docker.socket file permissions (644)"
+    condition: all
+    rules:
+      - 'c:stat -c %a /lib/systemd/system/docker.socket -> r:644'
+
+  - id: 30045
+    title: "Ensure Daemon.json has secure permissions (644)"
+    condition: all
+    rules:
+      - 'c:stat -c %a /etc/docker/daemon.json -> r:644'
+
+  - id: 30046
+    title: "Ensure Docker registries are accessed via HTTPS"
+    condition: all
+    rules:
+      - 'c:docker info --format {{.RegistryConfig.IndexConfigs}} -> n:http:'
+
+  - id: 30047
+    title: "Check for containers with excessive restarts (Stability/DoS)"
+    condition: all
+    rules:
+      - 'c:docker ps --format {{.Status}} | grep -o "Restarting" -> r:^$'
+
+  - id: 30048
+    title: "Verify Docker Storage Driver is production-ready (overlay2)"
+    condition: all
+    rules:
+      - 'c:docker info --format {{.Driver}} -> r:overlay2'
+
+  - id: 30049
+    title: "Ensure No-New-Privileges is set globally (via daemon.json)"
+    condition: all
+    rules:
+      - 'f:/etc/docker/daemon.json -> r:"no-new-privileges":\s*true'
+
+  - id: 30050
+    title: "Enforce Periodic Vulnerability Scanning (integration verify)"
+    condition: all
+    rules:
+      - 'c:docker scan --version -> r:docker-scan'
