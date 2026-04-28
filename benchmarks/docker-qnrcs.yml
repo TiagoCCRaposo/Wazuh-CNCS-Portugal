@@ -16,6 +16,7 @@ requirements:
   title: "Check if Docker is installed and running"
   all:
     - "f:/var/run/docker.sock"
+    - "f:/usr/bin/docker"
     - "c:command -v docker -> r:^/usr/bin/docker|^/usr/local/bin/docker"
 
 checks:
