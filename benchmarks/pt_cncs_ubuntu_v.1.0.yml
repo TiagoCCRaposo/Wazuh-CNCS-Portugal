@@ -15,7 +15,7 @@
 # ---[ SOVEREIGN SHIELD | SOVEREIGN GOLD ENGINE ]---                            #
 #                                                                               #
 #  POLICY NAME: Sovereign Gold Ubuntu 22.04 Compliance                          #
-#  FRAMEWORK:   Portuguese QNRCS (CNCS 50 Controls) + NIS2                      #
+#  FRAMEWORK:   Portuguese QNRCS (CNCS 50 Controls) + NIS2 + COBIT              #
 #  VERSION:     v1.0. (EN-US)                                                   #
 #  AUTHOR:      Tiago Raposo (https://github.com/TiagoCCRaposo)                 #
 #  LICENSE:     MIT                                                             #
@@ -44,7 +44,12 @@ checks:
     condition: all
     rules:
       - 'f:/etc/ssh/sshd_config -> !r:^PermitRootLogin\s+yes'
-
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.AC-1"
+      - "Regulation:NIS2:Art21_2_c"
+      - "Regulation:GDPR:Art32_1_b"
+      - "Governance:COBIT2019:DSS05.04"
+    
   - id: 20002
     title: "[PT-CNCS-20002] GDPR - Password History (PAM)"
     description: "Enforces password reuse limits to prevent credential recycling."
@@ -54,6 +59,11 @@ checks:
     rules:
       - 'f:/etc/pam.d/common-password -> r:pam_unix.so'
       - 'f:/etc/pam.d/common-password -> r:remember'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.AC-1"
+      - "Regulation:NIS2:Art21_2_c"
+      - "Regulation:GDPR:Art32_1_b"
+      - "Governance:COBIT2019:DSS05.04"
 
   - id: 20003
     title: "[PT-CNCS-20003] Maximum Password Age (90 Days)"
@@ -63,6 +73,11 @@ checks:
     condition: all
     rules:
       - 'f:/etc/login.defs -> r:^PASS_MAX_DAYS\s+90'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.AC-1"
+      - "Regulation:NIS2:Art21_2_c"
+      - "Regulation:GDPR:Art32_1_b"
+      - "Governance:COBIT2019:DSS05.04"
 
   - id: 20025
     title: "[PT-CNCS-20025] Global Session Timeout (TMOUT)"
@@ -72,6 +87,10 @@ checks:
     condition: all
     rules:
       - 'f:/etc/profile -> r:TMOUT=\d+'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.AC-1"
+      - "Regulation:NIS2:Art21_2_c"
+      - "Governance:COBIT2019:DSS05.04"
 
   - id: 20026
     title: "[PT-CNCS-20026] Account Lockout after Login Failures"
@@ -82,6 +101,10 @@ checks:
     rules:
       - 'f:/etc/pam.d/common-auth -> r:pam_faillock.so'
       - 'f:/etc/pam.d/common-auth -> r:pam_tally2.so'
+    references:
+      - "Framework:QNRCS_v2:DETEÇÃO.DE-2"
+      - "Regulation:NIS2:Art21_2_c"
+      - "Governance:COBIT2019:DSS05.04"
 
   - id: 20019
     title: "[PT-CNCS-20019] Prohibit Accounts with Empty Passwords"
@@ -91,6 +114,11 @@ checks:
     condition: all
     rules:
       - 'c:awk -F: "($2 == \"\") { print $1 }" /etc/shadow -> !r:.'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.AC-1"
+      - "Regulation:NIS2:Art21_2_c"
+      - "Regulation:GDPR:Art32_1_b"
+      - "Governance:COBIT2019:DSS05.04"
 
   - id: 20027
     title: "[PT-CNCS-20027] Restrict Access to the 'su' Command"
@@ -100,6 +128,10 @@ checks:
     condition: all
     rules:
       - 'f:/etc/pam.d/su -> r:pam_wheel.so'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.AC-1"
+      - "Regulation:NIS2:Art21_2_c"
+      - "Governance:COBIT2019:DSS05.04"
 
 # =================================================================
 # DOMAIN 2: NETWORK STACK HARDENING (SYSCTL)
@@ -113,6 +145,10 @@ checks:
     condition: all
     rules:
       - 'c:ufw status -> r:Status: active'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.PS-2"
+      - "Regulation:NIS2:Art21_2_c"
+      - "Governance:COBIT2019:DSS05.02"
 
   - id: 20008
     title: "[PT-CNCS-20008] Disable IP Forwarding"
@@ -122,6 +158,10 @@ checks:
     condition: all
     rules:
       - 'f:/etc/sysctl.conf -> r:net.ipv4.ip_forward\s*=\s*0'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.PS-2"
+      - "Regulation:NIS2:Art21_2_c"
+      - "Governance:COBIT2019:DSS05.02"
 
   - id: 20010
     title: "[PT-CNCS-20010] Anti-DoS: Disable ICMP Broadcast"
@@ -131,7 +171,11 @@ checks:
     condition: all
     rules:
       - 'c:sysctl net.ipv4.icmp_echo_ignore_broadcasts -> r:1'
-
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.PS-2"
+      - "Regulation:NIS2:Art21_2_c"
+      - "Governance:COBIT2019:DSS05.02"
+    
   - id: 20011
     title: "[PT-CNCS-20011] Ignore Bogus ICMP Errors"
     description: "Protects against logging flooding from invalid ICMP packets."
@@ -140,6 +184,9 @@ checks:
     condition: all
     rules:
       - 'c:sysctl net.ipv4.icmp_ignore_bogus_error_responses -> r:1'
+    references:
+      - "Framework:QNRCS_v2:DETEÇÃO.DE-1"
+      - "Governance:COBIT2019:DSS05.02"
 
   - id: 20030
     title: "[PT-CNCS-20030] Disable IPv6 Stack"
@@ -149,6 +196,9 @@ checks:
     condition: all
     rules:
       - 'c:sysctl net.ipv6.conf.all.disable_ipv6 -> r:1'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.PS-2"
+      - "Governance:COBIT2019:DSS05.02"
 
   - id: 20031
     title: "[PT-CNCS-20031] TCP SYN Cookies Enabled"
@@ -158,6 +208,10 @@ checks:
     condition: all
     rules:
       - 'c:sysctl net.ipv4.tcp_syncookies -> r:1'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.PS-2"
+      - "Regulation:NIS2:Art21_2_c"
+      - "Governance:COBIT2019:DSS05.02"
 
   - id: 20032
     title: "[PT-CNCS-20032] Ignore ICMP Redirects"
@@ -167,6 +221,9 @@ checks:
     condition: all
     rules:
       - 'c:sysctl net.ipv4.conf.all.accept_redirects -> r:0'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.PS-2"
+      - "Governance:COBIT2019:DSS05.02"
 
   - id: 20033
     title: "[PT-CNCS-20033] Disable Source Routed Packets"
@@ -176,6 +233,9 @@ checks:
     condition: all
     rules:
       - 'c:sysctl net.ipv4.conf.all.accept_source_route -> r:0'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.PS-2"
+      - "Governance:COBIT2019:DSS05.02"
 
   - id: 20034
     title: "[PT-CNCS-20034] Log Martian Packets"
@@ -185,6 +245,9 @@ checks:
     condition: all
     rules:
       - 'c:sysctl net.ipv4.conf.all.log_martians -> r:1'
+    references:
+      - "Framework:QNRCS_v2:DETEÇÃO.DE-1"
+      - "Governance:COBIT2019:DSS05.02"
 
 # =================================================================
 # DOMAIN 3: KERNEL HARDENING
@@ -198,6 +261,10 @@ checks:
     condition: all
     rules:
       - 'c:sysctl kernel.randomize_va_space -> r:2'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.PS-2"
+      - "Regulation:NIS2:Art21_2_c"
+      - "Governance:COBIT2019:DSS05.03"
 
   - id: 20012
     title: "[PT-CNCS-20012] Restrict Access to Kernel Logs (dmesg)"
@@ -207,6 +274,9 @@ checks:
     condition: all
     rules:
       - 'c:sysctl kernel.dmesg_restrict -> r:1'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.AC-1"
+      - "Governance:COBIT2019:DSS05.03"
 
   - id: 20021
     title: "[PT-CNCS-20021] Disable CORE Dumps"
@@ -216,6 +286,10 @@ checks:
     condition: all
     rules:
       - 'c:sysctl fs.suid_dumpable -> r:0'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.PS-2"
+      - "Regulation:GDPR:Art32_1_b"
+      - "Governance:COBIT2019:DSS05.03"
 
   - id: 20035
     title: "[PT-CNCS-20035] Restrict Kernel Pointers (%p)"
@@ -225,6 +299,9 @@ checks:
     condition: all
     rules:
       - 'c:sysctl kernel.kptr_restrict -> r:1'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.PS-2"
+      - "Governance:COBIT2019:DSS05.03"
 
   - id: 20036
     title: "[PT-CNCS-20036] Disable kexec (Runtime Protection)"
@@ -234,6 +311,9 @@ checks:
     condition: all
     rules:
       - 'c:sysctl kernel.kexec_load_disabled -> r:1'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.PS-2"
+      - "Governance:COBIT2019:DSS05.03"
 
   - id: 20037
     title: "[PT-CNCS-20037] BPF JIT Hardening"
@@ -243,6 +323,9 @@ checks:
     condition: all
     rules:
       - 'c:sysctl net.core.bpf_jit_harden -> r:2'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.PS-2"
+      - "Governance:COBIT2019:DSS05.03"
 
 # =================================================================
 # DOMAIN 4: INTEGRITY & PRIVILEGES (PoLP)
@@ -256,6 +339,10 @@ checks:
     condition: all
     rules:
       - 'c:awk -F: "($3 == 0) { print $1 }" /etc/passwd -> r:^root$'
+    references:
+      - "Framework:QNRCS_v2:IDENTIFICAÇÃO.AM-1"
+      - "Framework:QNRCS_v2:PROTEÇÃO.AC-1"
+      - "Governance:COBIT2019:DSS05.04"
 
   - id: 20005
     title: "[PT-CNCS-20005] Password Hash File Presence (/etc/shadow)"
@@ -265,6 +352,10 @@ checks:
     condition: all
     rules:
       - 'f:/etc/shadow'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.PS-2"
+      - "Regulation:GDPR:Art32_1_b"
+      - "Governance:COBIT2019:DSS06.03"
 
   - id: 20018
     title: "[PT-CNCS-20018] Secure Permissions for Sudoers File"
@@ -274,7 +365,11 @@ checks:
     condition: all
     rules:
       - 'f:/etc/sudoers -> n:mode <= 0440'
-
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.AC-1"
+      - "Regulation:NIS2:Art21_2_c"
+      - "Governance:COBIT2019:DSS05.04"
+    
   - id: 20016
     title: "[PT-CNCS-20016] Detect Unowned Files"
     description: "Identifies files not belonging to a valid user or group."
@@ -283,6 +378,9 @@ checks:
     condition: all
     rules:
       - 'c:find /etc -nogroup -o -nouser -> !r:.'
+    references:
+      - "Framework:QNRCS_v2:IDENTIFICAÇÃO.AM-2"
+      - "Governance:COBIT2019:BAI10.02"
 
   - id: 20038
     title: "[PT-CNCS-20038] Secure Permissions for /etc/shadow"
@@ -292,6 +390,10 @@ checks:
     condition: all
     rules:
       - 'f:/etc/shadow -> n:mode <= 0640'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.AC-1"
+      - "Regulation:GDPR:Art32_1_b"
+      - "Governance:COBIT2019:DSS06.03"
 
   - id: 20039
     title: "[PT-CNCS-20039] Secure Permissions for /etc/passwd"
@@ -301,6 +403,9 @@ checks:
     condition: all
     rules:
       - 'f:/etc/passwd -> n:mode <= 0644'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.AC-1"
+      - "Governance:COBIT2019:DSS06.03"
 
   - id: 20040
     title: "[PT-CNCS-20040] Detect World-Writable Files"
@@ -310,6 +415,9 @@ checks:
     condition: all
     rules:
       - 'c:find /etc -perm -2 ! -type l -> !r:.'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.PS-2"
+      - "Governance:COBIT2019:DSS06.03"
 
   - id: 20051
     title: "[PT-CNCS-20051] Sticky Bit on Public Writable Directories"
@@ -319,6 +427,9 @@ checks:
     condition: all
     rules:
       - 'c:find / -xdev -type d \( -perm -0002 -a ! -perm -1000 \) -> !r:.'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.PS-2"
+      - "Governance:COBIT2019:DSS06.03"
 
 # =================================================================
 # DOMAIN 5: SOFTWARE & SUPPLY CHAIN SECURITY
@@ -333,6 +444,10 @@ checks:
     rules:
       - 'p:telnetd'
       - 'p:rshd'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.PS-2"
+      - "Regulation:NIS2:Art21_2_c"
+      - "Governance:COBIT2019:BAI10.02"
 
   - id: 20041
     title: "[PT-CNCS-20041] Remove NIS Services"
@@ -343,6 +458,9 @@ checks:
     rules:
       - 'p:nis'
       - 'ypbind'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.PS-2"
+      - "Governance:COBIT2019:BAI10.02"
 
   - id: 20042
     title: "[PT-CNCS-20042] Compiler Restriction (GCC Audit)"
@@ -352,6 +470,9 @@ checks:
     condition: all
     rules:
       - 'f:/usr/bin/gcc -> n:mode <= 0700'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.PS-2"
+      - "Governance:COBIT2019:DSS05.03"
 
   - id: 20043
     title: "[PT-CNCS-20043] Compiler Restriction (G++ Audit)"
@@ -361,6 +482,9 @@ checks:
     condition: all
     rules:
       - 'f:/usr/bin/g++ -> n:mode <= 0700'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.PS-2"
+      - "Governance:COBIT2019:DSS05.03"
 
   - id: 20044
     title: "[PT-CNCS-20044] Post-Exploitation Tools Audit (Netcat)"
@@ -371,6 +495,9 @@ checks:
     rules:
       - 'f:/usr/bin/nc'
       - 'f:/usr/bin/nc.openbsd'
+    references:
+      - "Framework:QNRCS_v2:DETEÇÃO.DE-1"
+      - "Governance:COBIT2019:DSS05.03
 
   - id: 20013
     title: "[PT-CNCS-20013] Block USB Storage (Physical Security)"
@@ -380,6 +507,10 @@ checks:
     condition: all
     rules:
       - 'f:/etc/modprobe.d/usb-storage.conf -> r:install usb-storage /bin/true'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.PS-1"
+      - "Regulation:NIS2:Art21_2_c"
+      - "Governance:COBIT2019:DSS05.06
 
   - id: 20045
     title: "[PT-CNCS-20045] Block DCCP Protocol"
@@ -389,6 +520,9 @@ checks:
     condition: all
     rules:
       - 'f:/etc/modprobe.d/dccp.conf -> r:install dccp /bin/true'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.PS-2"
+      - "Governance:COBIT2019:BAI10.02"
 
   - id: 20046
     title: "[PT-CNCS-20046] Block SCTP Protocol"
@@ -398,6 +532,9 @@ checks:
     condition: all
     rules:
       - 'f:/etc/modprobe.d/sctp.conf -> r:install sctp /bin/true'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.PS-2"
+      - "Governance:COBIT2019:BAI10.02"
 
 # =================================================================
 # DOMAIN 6: LOGGING & AUDITING (FORENSICS)
@@ -411,6 +548,10 @@ checks:
     condition: all
     rules:
       - 'd:/etc/audit'
+    references:
+      - "Framework:QNRCS_v2:DETEÇÃO.DE-1"
+      - "Regulation:NIS2:Art21_2_e"
+      - "Governance:COBIT2019:MEA01.03"
 
   - id: 20014
     title: "[PT-CNCS-20014] Rsyslog Service Active"
@@ -420,6 +561,10 @@ checks:
     condition: all
     rules:
       - 'p:rsyslogd'
+    references:
+      - "Framework:QNRCS_v2:DETEÇÃO.DE-1"
+      - "Regulation:NIS2:Art21_2_e"
+      - "Governance:COBIT2019:MEA01.03"
 
   - id: 20047
     title: "[PT-CNCS-20047] Integrity of Audit Rules"
@@ -429,6 +574,9 @@ checks:
     condition: all
     rules:
       - 'f:/etc/audit/audit.rules'
+    references:
+      - "Framework:QNRCS_v2:DETEÇÃO.DE-1"
+      - "Governance:COBIT2019:MEA01.03"
 
   - id: 20048
     title: "[PT-CNCS-20048] Remote Logging (SIEM Integration)"
@@ -438,6 +586,10 @@ checks:
     condition: all
     rules:
       - 'f:/etc/rsyslog.conf -> r:@@'
+    references:
+      - "Framework:QNRCS_v2:RESPOSTA.RE-1"
+      - "Regulation:NIS2:Art21_2_e"
+      - "Governance:COBIT2019:DSS02.04"
 
   - id: 20049
     title: "[PT-CNCS-20049] Crontab Integrity"
@@ -447,6 +599,9 @@ checks:
     condition: all
     rules:
       - 'f:/etc/crontab -> n:mode <= 0600'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.PS-2"
+      - "Governance:COBIT2019:DSS06.03"
 
   - id: 20050
     title: "[PT-CNCS-20050] Bootloader Permissions (GRUB Integrity)"
@@ -456,6 +611,9 @@ checks:
     condition: all
     rules:
       - 'f:/boot/grub/grub.cfg -> n:mode <= 0400'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.PS-2"
+      - "Governance:COBIT2019:DSS05.03"
 
 # =================================================================
 # DOMAIN 7: SECURE COMMUNICATIONS (SSH)
@@ -469,6 +627,9 @@ checks:
     condition: all
     rules:
       - 'f:/etc/ssh/sshd_config -> r:Port 22'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.PS-2"
+      - "Governance:COBIT2019:DSS05.02"
 
   - id: 20052
     title: "[PT-CNCS-20052] SSH Protocol 2 Enforcement"
@@ -478,6 +639,10 @@ checks:
     condition: all
     rules:
       - 'f:/etc/ssh/sshd_config -> !r:Protocol\s+1'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.PS-2"
+      - "Regulation:NIS2:Art21_2_c"
+      - "Governance:COBIT2019:DSS05.02"
 
   - id: 20053
     title: "[PT-CNCS-20053] SSH Max Auth Tries (Limit 4)"
@@ -487,6 +652,9 @@ checks:
     condition: all
     rules:
       - 'f:/etc/ssh/sshd_config -> r:MaxAuthTries\s+4'
+    references:
+      - "Framework:QNRCS_v2:DETEÇÃO.DE-2"
+      - "Governance:COBIT2019:DSS05.04"
 
   - id: 20054
     title: "[PT-CNCS-20054] SSH Ignore Rhosts"
@@ -505,6 +673,9 @@ checks:
     condition: all
     rules:
       - 'f:/etc/ssh/sshd_config -> r:HostbasedAuthentication\s+no'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.AC-1"
+      - "Governance:COBIT2019:DSS05.02"
 
   - id: 20056
     title: "[PT-CNCS-20056] SSH Empty Passwords Disabled"
@@ -514,6 +685,9 @@ checks:
     condition: all
     rules:
       - 'f:/etc/ssh/sshd_config -> r:PermitEmptyPasswords\s+no'
+    references:
+      - "Framework:QNRCS_v2:PROTEÇÃO.AC-1"
+      - "Governance:COBIT2019:DSS05.04"
 
 
 #################################################################################
@@ -526,7 +700,7 @@ checks:
 # |   |   ___________________________________________________________   |     | #
 # |   |  |                                                            | |     | #
 # |   |  |   PORTUGAL NATIONAL CYBERSECURITY COMPLIANCE FRAMEWORK     | |     | #
-# |   |  |            [ QNRCS / NIS2 / GDPR / ISO 27001 ]             | |     | #
+# |   |  |       [ QNRCS / NIS2 / GDPR / ISO 27001 / COBIT ]          | |     | #
 # |   |  |____________________________________________________________| |     | #
 # |   |_________________________________________________________________|     | #
 # |                                                                           | #
